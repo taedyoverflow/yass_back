@@ -95,11 +95,14 @@ async def async_stream_file_and_cleanup(file_path: str, cleanup_dir: str):
 # POST: 오디오 처리 요청
 @app.post("/process_audio/")
 async def process_audio(youtube: YoutubeURL):
+    print("✅ [STEP1] 유튜브 URL 수신:", youtube.url)
     temp_dir = tempfile.mkdtemp()
+    print("✅ [STEP2] 임시 디렉토리 생성:", temp_dir)
     try:
         input_audio = await asyncio.get_event_loop().run_in_executor(None, download_audio_temp, youtube.url, temp_dir)
+        print("✅ [STEP3] 오디오 다운로드 완료:", input_audio)
         vocal_path, accompaniment_path = await spleeter_separate(input_audio, temp_dir)
-
+        print("✅ [STEP4] 스플리터 완료")
         base_name = os.path.splitext(os.path.basename(input_audio))[0]
 
         return {
@@ -107,6 +110,7 @@ async def process_audio(youtube: YoutubeURL):
             "accompaniment_stream_url": f"/stream/accompaniment/{os.path.basename(temp_dir)}/{base_name}"
         }
     except Exception as e:
+        print("❌ 예외 발생:", str(e))
         shutil.rmtree(temp_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail=str(e))
 
