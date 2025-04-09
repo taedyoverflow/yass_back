@@ -5,14 +5,24 @@ import shutil
 import subprocess
 import threading
 import time
+import traceback
 from typing import Tuple
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from spleeter.separator import Separator
 
 app = FastAPI()
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    print("🔥 예외 발생 🔥")
+    traceback.print_exc()  # 전체 스택 출력
+    return JSONResponse(
+        status_code=500,
+        content={"detail": str(exc)},
+    )
 
 app.add_middleware(
     CORSMiddleware,
