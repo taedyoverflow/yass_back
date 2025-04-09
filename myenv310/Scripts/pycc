@@ -1,0 +1,3 @@
+#!C:\Users\User\Desktop\AI-X_Project_final_AI-master\myenv310\Scripts\python.exe
+from numba.pycc import main
+main()
