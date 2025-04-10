@@ -41,6 +41,7 @@ def download_audio_temp(youtube_url: str, temp_dir: str) -> str:
     output_path = os.path.join(temp_dir, file_name)
     command = [
         "yt-dlp",
+        "--cookies", "cookies.txt",
         "-x", "--audio-format", "mp3",
         "-o", output_path,
         youtube_url
