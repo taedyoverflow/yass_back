@@ -15,6 +15,9 @@ from spleeter.separator import Separator
 
 app = FastAPI()
 
+# 🔐 전역 락 생성 (한 번에 1명만 분리 작업)
+spleeter_lock = asyncio.Lock()
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     print("🔥 예외 발생 🔥")
@@ -94,38 +97,38 @@ async def async_stream_file_and_cleanup(file_path: str, cleanup_dir: str):
 
 
 
-# POST: 오디오 처리 요청
 @app.post("/process_audio/")
 async def process_audio(youtube: YoutubeURL):
-    print("✅ [STEP1] 유튜브 URL 수신:", youtube.url)
-    temp_dir = tempfile.mkdtemp()
-    print("✅ [STEP2] 임시 디렉토리 생성:", temp_dir)
-    try:
-        input_audio = await asyncio.get_event_loop().run_in_executor(None, download_audio_temp, youtube.url, temp_dir)
-        print("✅ [STEP3] 오디오 다운로드 완료:", input_audio)
-        
-        vocal_path, accompaniment_path = await spleeter_separate(input_audio, temp_dir)
-        print("✅ [STEP4] 스플리터 완료")
+    async with spleeter_lock:  # 🔐 오직 1명만 접근 가능
+        print("✅ [STEP1] 유튜브 URL 수신:", youtube.url)
+        temp_dir = tempfile.mkdtemp()
+        print("✅ [STEP2] 임시 디렉토리 생성:", temp_dir)
+        try:
+            input_audio = await asyncio.get_event_loop().run_in_executor(
+                None, download_audio_temp, youtube.url, temp_dir
+            )
+            print("✅ [STEP3] 오디오 다운로드 완료:", input_audio)
 
-        # 🎯 이 부분에 로그 추가
-        print("✅ [STEP5] 응답 직전 vocal/accomp path 확인:")
-        print("   vocal:", vocal_path)
-        print("   accomp:", accompaniment_path)
+            vocal_path, accompaniment_path = await spleeter_separate(input_audio, temp_dir)
+            print("✅ [STEP4] 스플리터 완료")
 
-        base_name = os.path.splitext(os.path.basename(input_audio))[0]
+            print("✅ [STEP5] 응답 직전 vocal/accomp path 확인:")
+            print("   vocal:", vocal_path)
+            print("   accomp:", accompaniment_path)
 
-        print(f"✅ [STEP6] 응답 준비 완료: {base_name}")
+            base_name = os.path.splitext(os.path.basename(input_audio))[0]
+            print(f"✅ [STEP6] 응답 준비 완료: {base_name}")
 
-        return {
-            "vocal_stream_url": f"/stream/vocal/{os.path.basename(temp_dir)}/{base_name}",
-            "accompaniment_stream_url": f"/stream/accompaniment/{os.path.basename(temp_dir)}/{base_name}"
-        }
-    except Exception as e:
-        print("❌ 예외 발생:")
-        import traceback
-        traceback.print_exc()
-        shutil.rmtree(temp_dir, ignore_errors=True)
-        raise HTTPException(status_code=500, detail=str(e))
+            return {
+                "vocal_stream_url": f"/stream/vocal/{os.path.basename(temp_dir)}/{base_name}",
+                "accompaniment_stream_url": f"/stream/accompaniment/{os.path.basename(temp_dir)}/{base_name}"
+            }
+        except Exception as e:
+            print("❌ 예외 발생:")
+            import traceback
+            traceback.print_exc()
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            raise HTTPException(status_code=500, detail=str(e))
 
 
 # GET: 스트리밍 라우트
