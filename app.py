@@ -111,7 +111,9 @@ async def process_audio(youtube: YoutubeURL):
             "accompaniment_stream_url": f"/stream/accompaniment/{os.path.basename(temp_dir)}/{base_name}"
         }
     except Exception as e:
-        print("❌ 예외 발생:", str(e))
+        print("❌ 예외 발생:")
+        import traceback
+        traceback.print_exc()  # ✅ 전체 예외 로그 출력
         shutil.rmtree(temp_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail=str(e))
 
