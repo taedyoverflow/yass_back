@@ -19,6 +19,8 @@ app = FastAPI()
 
 # 전역 락: 동시에 하나의 요청만 처리
 spleeter_lock = asyncio.Lock()
+separator_instance = None
+separator_lock = asyncio.Lock()
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -79,16 +81,22 @@ def download_audio_temp(youtube_url: str, temp_dir: str) -> str:
     except subprocess.CalledProcessError as e:
         stderr = e.stderr.decode()
         if "This video is unavailable" in stderr or "sign in" in stderr or "403" in stderr:
-            raise HTTPException(status_code=401, detail="쿠키가 만료되었거나 인증이 필요합니다.")
+            raise HTTPException(status_code=401, detail="쿠키가 만료되어있거나 인증이 필요합니다.")
         else:
             raise HTTPException(status_code=500, detail=f"Audio download failed: {stderr}")
 
-def get_fresh_separator():
-    tf.compat.v1.reset_default_graph()
+def create_separator():
     return Separator('spleeter:2stems')
 
+async def get_or_create_separator():
+    global separator_instance
+    async with separator_lock:
+        if separator_instance is None:
+            separator_instance = await asyncio.to_thread(create_separator)
+        return separator_instance
+
 async def spleeter_separate(audio_path: str, temp_dir: str) -> Tuple[str, str]:
-    separator = await asyncio.to_thread(get_fresh_separator)
+    separator = await get_or_create_separator()
     await asyncio.to_thread(separator.separate_to_file, audio_path, temp_dir, codec="wav")
 
     base_name = os.path.splitext(os.path.basename(audio_path))[0]
@@ -120,7 +128,7 @@ async def async_stream_file_and_cleanup(file_path: str, cleanup_dir: str):
             while chunk := f.read(1024 * 1024):
                 yield chunk
     finally:
-        print(f"🧹 [CLEANUP] Trigger cleanup for: {cleanup_dir}")
+        print(f"🩹 [CLEANUP] Trigger cleanup for: {cleanup_dir}")
         threading.Thread(target=safe_cleanup, args=(cleanup_dir,)).start()
 
 @app.post("/process_audio/")
