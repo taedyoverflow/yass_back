@@ -45,7 +45,9 @@ class YoutubeURL(BaseModel):
 def download_audio_temp(youtube_url: str, temp_dir: str) -> str:
     file_name = "input.mp3"
     output_path = os.path.join(temp_dir, file_name)
+
     command = [
+        "sudo", "-u", "user1",
         "yt-dlp",
         "--cookies-from-browser", "chrome",
         "-x", "--audio-format", "mp3",
@@ -58,10 +60,7 @@ def download_audio_temp(youtube_url: str, temp_dir: str) -> str:
         return output_path
     except subprocess.CalledProcessError as e:
         stderr = e.stderr.decode()
-        if "This video is unavailable" in stderr or "sign in" in stderr or "403" in stderr:
-            raise HTTPException(status_code=401, detail="쿠키가 만료되어있거나 인증이 필요합니다.")
-        else:
-            raise HTTPException(status_code=500, detail=f"Audio download failed: {stderr}")
+        raise HTTPException(status_code=500, detail=f"Audio download failed: {stderr}")
 
 def create_separator():
     return Separator('spleeter:2stems')
