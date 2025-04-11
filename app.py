@@ -42,38 +42,16 @@ app.add_middleware(
 class YoutubeURL(BaseModel):
     url: str
 
-def log_cookie_expiration(cookies_file="cookies.txt"):
-    if not os.path.exists(cookies_file):
-        print("⚠️ [COOKIE] cookies.txt not found")
-        return
-
-    try:
-        with open(cookies_file, 'r') as f:
-            print("📅 [COOKIE] Expiration dates from cookies.txt:")
-            for line in f:
-                if not line.startswith("#") and line.strip():
-                    parts = line.strip().split("\t")
-                    if len(parts) >= 5:
-                        try:
-                            expiry_unix = int(parts[4])
-                            expiry_date = datetime.datetime.fromtimestamp(expiry_unix)
-                            print(f"🍪 {parts[5]} => expires at {expiry_date}")
-                        except ValueError:
-                            continue
-    except Exception as e:
-        print("❌ [COOKIE] Failed to read cookie expiration:", e)
-
 def download_audio_temp(youtube_url: str, temp_dir: str) -> str:
     file_name = "input.mp3"
     output_path = os.path.join(temp_dir, file_name)
     command = [
         "yt-dlp",
-        "--cookies", "cookies.txt",
+        "--cookies-from-browser", "chrome",
         "-x", "--audio-format", "mp3",
         "-o", output_path,
         youtube_url
     ]
-    log_cookie_expiration("cookies.txt")
 
     try:
         subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -128,7 +106,7 @@ async def async_stream_file_and_cleanup(file_path: str, cleanup_dir: str):
             while chunk := f.read(1024 * 1024):
                 yield chunk
     finally:
-        print(f"🩹 [CLEANUP] Trigger cleanup for: {cleanup_dir}")
+        print(f"🪹 [CLEANUP] Trigger cleanup for: {cleanup_dir}")
         threading.Thread(target=safe_cleanup, args=(cleanup_dir,)).start()
 
 @app.post("/process_audio/")
@@ -136,7 +114,7 @@ async def process_audio(youtube: YoutubeURL):
     async with spleeter_lock:
         print("✅ [STEP1] 유튜브 URL 수신:", youtube.url)
         temp_dir = tempfile.mkdtemp()
-        print("✅ [STEP2] 임시 디렉토리 생성:", temp_dir)
+        print("✅ [STEP2] 임시 디렉터리 생성:", temp_dir)
         try:
             input_audio = await asyncio.get_event_loop().run_in_executor(
                 None, download_audio_temp, youtube.url, temp_dir
@@ -147,7 +125,7 @@ async def process_audio(youtube: YoutubeURL):
             print("✅ [STEP4] 스플리터 완료")
 
             base_name = os.path.splitext(os.path.basename(input_audio))[0]
-            print(f"✅ [STEP6] 응답 준비 완료: {base_name}")
+            print(f"✅ [STEP5] 응답 준비 완료: {base_name}")
 
             return {
                 "vocal_stream_url": f"/stream/vocal/{os.path.basename(temp_dir)}/{base_name}",
@@ -161,7 +139,7 @@ async def process_audio(youtube: YoutubeURL):
 
 @app.get("/stream/{track_type}/{temp_id}/{base_name}")
 async def stream_audio(track_type: str, temp_id: str, base_name: str):
-    print(f"🎧 [STREAM REQUEST] type={track_type}, temp_id={temp_id}, base_name={base_name}")
+    print(f"🎷 [STREAM REQUEST] type={track_type}, temp_id={temp_id}, base_name={base_name}")
 
     filename_map = {
         "vocal": "vocals.wav",
