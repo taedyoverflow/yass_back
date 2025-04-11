@@ -7,6 +7,7 @@ import threading
 import time
 import traceback
 import datetime
+import random
 from typing import Tuple
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -63,12 +64,27 @@ def log_cookie_expiration(cookies_file="cookies.txt"):
     except Exception as e:
         print("❌ [COOKIE] Failed to read cookie expiration:", e)
 
+# User-Agent 리스트 (추가 가능)
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
+    "Mozilla/5.0 (Linux; Android 11; SM-G991N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.6167.85 Mobile Safari/537.36"
+]
+
 def download_audio_temp(youtube_url: str, temp_dir: str) -> str:
     file_name = "input.mp3"
     output_path = os.path.join(temp_dir, file_name)
+    user_agent = random.choice(USER_AGENTS)
+
     command = [
         "yt-dlp",
         "--cookies", "cookies.txt",
+        "--user-agent", user_agent,
+        "--add-header", f"Referer: https://www.youtube.com/",
+        "--add-header", "Accept-Language: en-US,en;q=0.9",
+        "--add-header", "Accept-Encoding: gzip, deflate, br",
+        "--retries", "1",
         "-x", "--audio-format", "mp3",
         "-o", output_path,
         youtube_url
@@ -84,6 +100,7 @@ def download_audio_temp(youtube_url: str, temp_dir: str) -> str:
             raise HTTPException(status_code=401, detail="쿠키가 만료되어있거나 인증이 필요합니다.")
         else:
             raise HTTPException(status_code=500, detail=f"Audio download failed: {stderr}")
+
 
 def create_separator():
     return Separator('spleeter:2stems')
