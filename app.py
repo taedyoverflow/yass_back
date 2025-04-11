@@ -48,7 +48,7 @@ def download_audio_temp(youtube_url: str, temp_dir: str) -> str:
 
     command = [
         "sudo", "-u", "user1",
-        "yt-dlp",
+        "/home/user1/.local/bin/yt-dlp",
         "--cookies-from-browser", "chrome",
         "-x", "--audio-format", "mp3",
         "-o", output_path,
