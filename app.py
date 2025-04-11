@@ -6,6 +6,7 @@ import subprocess
 import threading
 import time
 import traceback
+import datetime
 from typing import Tuple
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,6 +39,27 @@ app.add_middleware(
 class YoutubeURL(BaseModel):
     url: str
 
+def log_cookie_expiration(cookies_file="cookies.txt"):
+    if not os.path.exists(cookies_file):
+        print("⚠️ [COOKIE] cookies.txt not found")
+        return
+
+    try:
+        with open(cookies_file, 'r') as f:
+            print("📅 [COOKIE] Expiration dates from cookies.txt:")
+            for line in f:
+                if not line.startswith("#") and line.strip():
+                    parts = line.strip().split("\t")
+                    if len(parts) >= 5:
+                        try:
+                            expiry_unix = int(parts[4])
+                            expiry_date = datetime.datetime.fromtimestamp(expiry_unix)
+                            print(f"🍪 {parts[5]} => expires at {expiry_date}")
+                        except ValueError:
+                            continue
+    except Exception as e:
+        print("❌ [COOKIE] Failed to read cookie expiration:", e)
+
 # 유튜브 오디오 다운로드
 def download_audio_temp(youtube_url: str, temp_dir: str) -> str:
     file_name = "input.mp3"
@@ -49,11 +71,19 @@ def download_audio_temp(youtube_url: str, temp_dir: str) -> str:
         "-o", output_path,
         youtube_url
     ]
+    # 🔍 쿠키 만료일자 로그 출력
+    log_cookie_expiration("cookies.txt")
+
     try:
         subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return output_path
     except subprocess.CalledProcessError as e:
-        raise HTTPException(status_code=500, detail=f"Audio download failed: {e.stderr.decode()}")
+        stderr = e.stderr.decode()
+        if "This video is unavailable" in stderr or "sign in" in stderr or "403" in stderr:
+            raise HTTPException(status_code=401, detail="쿠키가 만료되었거나 인증이 필요합니다.")
+        else:
+            raise HTTPException(status_code=500, detail=f"Audio download failed: {stderr}")
+
 
 async def spleeter_separate(audio_path: str, temp_dir: str) -> Tuple[str, str]:
     # 요청마다 새로 생성
