@@ -56,11 +56,13 @@ def download_audio_temp(youtube_url: str, temp_dir: str) -> str:
     ]
 
     try:
-        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        result = subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         return output_path
     except subprocess.CalledProcessError as e:
-        stderr = e.stderr.decode()
-        raise HTTPException(status_code=500, detail=f"Audio download failed: {stderr}")
+        print("🛑 yt-dlp 실패 로그 ↓↓↓↓↓")
+        print(e.stderr.decode())  # 💥 에러 내용을 서버 로그에 출력
+        raise HTTPException(status_code=500, detail=f"Audio download failed: {e.stderr.decode()}")
+
 
 def create_separator():
     return Separator('spleeter:2stems')
