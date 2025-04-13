@@ -8,13 +8,14 @@ def download_audio(youtube_url: str, temp_dir: str) -> str:
 
     print("💻 서버 환경")
     command = [
-        "sudo", "-u", "user1",
-        "/home/user1/.local/bin/yt-dlp",
-        "--cookies-from-browser", "chrome",
-        "-x", "--audio-format", "mp3",
-        "-o", output_path,
-        youtube_url
+    "/usr/bin/sudo", "-u", "user1",
+    "/home/user1/.local/bin/yt-dlp",
+    "--cookies-from-browser", "chrome",
+    "-x", "--audio-format", "mp3",
+    "-o", output_path,
+    youtube_url
     ]
+
 
     print(f"⚙️ [download_audio] yt-dlp 명령어: {' '.join(command)}")
 
