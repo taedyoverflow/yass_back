@@ -17,7 +17,7 @@ def schedule_deletion(bucket: str, object_name: str):
 @celery_app.task(bind=True)
 def tts_task(self, text: str, voice: str):
     temp_dir = tempfile.mkdtemp()
-    output_path = os.path.join(temp_dir, "tts_output.mp3")
+    output_path = os.path.join(temp_dir, "tts_output.wav")
     try:
         run_tts_task(text, voice, output_path)
         filename = os.path.basename(output_path)
