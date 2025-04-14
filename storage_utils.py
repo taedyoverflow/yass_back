@@ -1,4 +1,5 @@
 from minio import Minio
+import mimetypes
 
 # MinIO 클라이언트: 내부통신은 그대로 유지 (localhost)
 client = Minio(
@@ -11,9 +12,18 @@ client = Minio(
 def upload_to_minio(file_path: str, bucket: str, object_name: str):
     if not client.bucket_exists(bucket):
         client.make_bucket(bucket)
-    client.fput_object(bucket, object_name, file_path)
 
-    # ✅ 브라우저 접근용 URL은 HTTPS + 도메인 + /minio 접두어 사용
+    content_type, _ = mimetypes.guess_type(file_path)
+    if not content_type:
+        content_type = "application/octet-stream"  # fallback
+
+    client.fput_object(
+        bucket_name=bucket,
+        object_name=object_name,
+        file_path=file_path,
+        content_type=content_type  # ✅ 여기에 명시!
+    )
+
     return f"https://yass-ai.com/minio/{bucket}/{object_name}"
 
 def delete_from_minio(bucket: str, object_name: str):
