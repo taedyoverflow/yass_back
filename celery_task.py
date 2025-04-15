@@ -57,8 +57,8 @@ def process_audio_task(self, youtube_url: str):
         print(f"✅ 업로드 완료 - vocal_url: {vocal_url}, accomp_url: {accomp_url}")
 
         print("🕒 60초 후 삭제 예약 시작")
-        schedule_deletion.apply_async(args=["separation-bucket", vocal_name], countdown=100)
-        schedule_deletion.apply_async(args=["separation-bucket", accomp_name], countdown=100)
+        schedule_deletion.apply_async(args=["separation-bucket", vocal_name], countdown=600)
+        schedule_deletion.apply_async(args=["separation-bucket", accomp_name], countdown=600)
         print("✅ 삭제 예약 완료")
 
         return {
