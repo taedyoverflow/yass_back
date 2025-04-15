@@ -1,46 +1,42 @@
 # 🎧 YASS AI
 
-[https://yass-ai.com](https://yass-ai.com)
+🔗 **Live URL**: [https://yass-ai.com](https://yass-ai.com)
 
 YouTube Audio Separation and Streaming AI  
-유튜브 음원 분리(보컬, 반주 파일), 스트리밍 및 다운로드 가능  
-AI 기반 음원 분리(Spleeter), yt-dlp 기반 오디오 다운로드, Blob 스트리밍 기반 웹플레이어
-Edge-TTS 기반 음성 생성
-
+유튜브 음원을 검색하고 URL을 입력하면,  
+Spleeter AI를 통해 보컬과 반주(MR)를 분리할 수 있습니다.  
+또한 텍스트 입력만으로 자연스러운 음성을 생성하는  
+Edge-TTS 기반 TTS(Text-to-Speech) 기능도 함께 제공합니다.  
+분리된 음원과 변환된 음성은 스트리밍하거나 다운로드할 수 있습니다.
 ---
 
 [![My Way, Our Voices 데모 영상](http://img.youtube.com/vi/xch2Lzt14x4/0.jpg)](https://youtu.be/xch2Lzt14x4)
 
-> 음원 분리, AI Cover(추론) 및 맞춤형 음성 학습 모델 생성, TTS 시연 영상  
-> 초기 프로젝트 버전(서버 배포 X)
+> 음원 분리, AI 커버 추론, TTS 시연 영상입니다.  
+> (※ 초기 버전이며 로컬 환경에서만 구동(서버 미배포))
 
 ---
 
-## 🔍 **Features**
+## 🔍 Features
 
 - ✅ **YouTube Search**: 유튜브 영상 검색 및 썸네일 리스트 제공
-- 🎤 **Audio Separation**: 보컬/반주 분리 (powered by Spleeter)
-- 🎧 **Streaming & Download**: 브라우저 내 실시간 재생 및 다운로드
-- 🧠 **Text-to-Speech**: Edge-TTS 기반 자연스러운 음성 생성
-- 🌀 **Async Processing**: Celery + Redis 비동기 작업 큐
-- 📦 **Object Storage**: MinIO 기반 파일 저장 및 자동 삭제
-- 🚀 **FastAPI + React** 기반 실시간 처리 구조
+- 🎤 **Audio Separation**: 보컬 / 반주 분리 (powered by Spleeter)
+- 🎧 **Streaming & Download**: 실시간 Blob 스트리밍 및 다운로드 지원
+- 🗣️ **Text-to-Speech**: Edge-TTS 기반 자연스러운 음성 생성
+- 🌀 **Async Processing**: Celery + Redis 기반 비동기 작업 처리
+- 📦 **Object Storage**: MinIO에 결과 파일 저장 (일정 시간 후 자동 삭제)
+- ⚡ **FastAPI + React** 실시간 처리 웹서비스 구조
+- 🔄 **Pagination Scroll Reset**: 페이징(Next/Prev) 시 자동 스크롤 맨 위 이동 UX 개선
 
 ---
 
-## 🌐 **URL**
-
-👉 [yass-ai.com](https://yass-ai.com)
-
----
-
-## ⚙️ **Architecture Overview**
+## 🌐 Architecture
 
 ```mermaid
 graph TD
     A[React Frontend] -->|JSON Request| B(FastAPI Backend)
     B -->|Send Task| C[Celery Worker]
-    C -->|Split Audio + Generate Result| D[MinIO Storage]
+    C -->|Split Audio / TTS| D[MinIO Storage]
     D -->|Blob URL| B
     B -->|Final Response| A
     B -->|Status & Result Polling| C
@@ -49,52 +45,54 @@ graph TD
 
 ---
 
-## 🛠️ **Tech Stack**
+## 🛠️ Tech Stack
 
-### **Frontend**
+### 🔹 Frontend
 
-- **React** with **Material UI (MUI)**
-- Blob 기반 오디오 스트리밍 및 다운로드 구현
+- React (with Material UI)
+- Blob 기반 오디오 스트리밍 및 다운로드 기능 구현
+- **Pagination UX 개선**: 페이지 전환 시 자동 스크롤 최상단 이동
 
-### **Backend**
+### 🔹 Backend
 
-- **FastAPI** (메인 API 서버)
-- **yt-dlp**: YouTube 오디오 다운로드
-- **Spleeter**: 오디오 소스 분리 (보컬/반주)
-- **Edge-TTS**: 자연스러운 TTS 합성
+- FastAPI (메인 API 서버)
+- yt-dlp: YouTube 오디오 다운로드
+- Spleeter: 오디오 소스 분리 (보컬/반주)
+- Edge-TTS: 텍스트 음성 합성 (TTS)
 
-### **Infrastructure**
+### 🔹 Infrastructure
 
-- **Celery + Redis**: 비동기 태스크 큐 구조
-- **MinIO**: 오디오 파일 저장용 객체 스토리지
-- **Docker**: 프론트엔드 + 서브 인프라용 컨테이너화 구성
-- **Nginx + Certbot**: HTTPS 인증 및 리버스 프록시
+- Celery + Redis: 비동기 작업 큐
+- MinIO: 오디오 파일 저장용 객체 스토리지
+- Docker: 프론트엔드 및 서브 인프라 구성
+- Nginx + Certbot: HTTPS 인증 + 리버스 프록시
 
-> ⚠️ **FastAPI 백엔드는 현재 Docker 외부(user1)** 환경에서 실행 중입니다.  
-> 인증 유지 기반 yt-dlp의 `--cookies-from-browser` 옵션을 활용하기 위해 Chrome 로그인 환경(user1 세션)의 쿠키를 직접 접근해야 하며, 이는 Docker 내에서 불가능하므로 Docker 외부 실행으로 구조를 전환했습니다.
-
----
-
-## 🔁 **요청 & 응답 흐름 (비동기 기반)**
-
-1. **프론트엔드**: 유저가 YouTube URL 또는 텍스트(TTS)를 입력하고 요청
-2. **FastAPI**: 요청을 Celery 태스크로 위임하고 task_id 반환
-3. **Celery Worker**: yt-dlp로 오디오 다운로드, Spleeter로 분리 / Edge-TTS로 합성
-4. **MinIO**: 처리된 결과 파일 저장 (일정 시간 후 자동 삭제 정책 적용)
-5. **FastAPI**: 주기적으로 task_id 기반 결과를 확인하여 Blob URL 응답
-6. **프론트엔드**: Blob URL로 실시간 재생 또는 다운로드 제공
+> ⚠️ **FastAPI 백엔드는 현재 Docker 외부 (`user1` 환경)에서 실행 중입니다.**  
+> `yt-dlp`의 `--cookies-from-browser chrome` 옵션을 통해 로그인된 Chrome 쿠키를 활용하기 위함이며,  
+> 이는 Docker 컨테이너 내부에서는 작동하지 않기 때문에 Docker 외부 실행으로 구조를 전환했습니다.
 
 ---
 
-## 🧠 **만든 이유**
+## 🔁 비동기 요청 처리 흐름
 
-- 직접 필요해서 만듦
-- 아무도 개발 안 시켜줘서 내가 만듦
-- 실전에서 돌아가는 AI 웹 서비스를 만들고 싶었음
+1. 유저가 YouTube URL 또는 TTS 텍스트 입력 후 요청
+2. FastAPI는 해당 요청을 Celery 태스크로 전달하고 `task_id` 반환
+3. Celery Worker는 yt-dlp로 오디오 다운로드 → Spleeter 분리 or TTS 합성
+4. MinIO에 결과 파일 저장 (일정 시간 후 자동 삭제)
+5. FastAPI는 task_id 기반으로 상태 및 결과를 주기적으로 확인
+6. 완료된 결과 파일은 Blob URL로 프론트에 전달 → 실시간 스트리밍 or 다운로드 가능
 
 ---
 
-## 📬 **Contact**
+## 💡 만든 이유
+
+- 직접 필요해서 만들었어요
+- 아무도 개발 안 시켜줘서 스스로 만들어봤습니다
+- 실전에서 돌아가는 AI 웹서비스를 구현해보고 싶었어요
+
+---
+
+## 📬 Contact
 
 📧 [taedyoverflow@gmail.com](mailto:taedyoverflow@gmail.com)  
-🧠 Made by Taedy
+🧠 Made by **Taedy**
