@@ -82,3 +82,25 @@ def process_audio_task(self, youtube_url: str):
         # 항상 정리
         shutil.rmtree(temp_dir, ignore_errors=True)
         logger.info(f"🧹 임시 폴더 정리 완료: {temp_dir}")
+
+@celery_app.task(bind=True)
+def tts_task(self, text: str, voice: str):
+    temp_dir = tempfile.mkdtemp()
+    try:
+        filename = generate_unique_filename("tts")
+        output_path = os.path.join(temp_dir, filename)
+
+        logger.info("🗣️ TTS 작업 시작")
+        run_tts_task(text, voice, output_path)
+
+        url = upload_with_deletion("tts-bucket", output_path, filename)
+        logger.info(f"✅ TTS 업로드 및 삭제 예약 완료 - URL: {url}")
+
+        return {"url": url}
+    except Exception as e:
+        logger.error(f"❌ TTS 작업 실패: {e}")
+        traceback.print_exc()
+        raise self.retry(exc=e, countdown=10, max_retries=3)
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        logger.info(f"🧹 임시 폴더 정리 완료: {temp_dir}")
