@@ -8,6 +8,7 @@ Spleeter AI를 통해 보컬과 반주(MR)를 분리할 수 있습니다.
 또한 텍스트 입력만으로 자연스러운 음성을 생성하는  
 Edge-TTS 기반 TTS(Text-to-Speech) 기능도 함께 제공합니다.  
 분리된 음원과 변환된 음성은 스트리밍하거나 다운로드할 수 있습니다.
+
 ---
 
 [![My Way, Our Voices 데모 영상](http://img.youtube.com/vi/xch2Lzt14x4/0.jpg)](https://youtu.be/xch2Lzt14x4)
@@ -25,6 +26,7 @@ Edge-TTS 기반 TTS(Text-to-Speech) 기능도 함께 제공합니다.
 - 🗣️ **Text-to-Speech**: Edge-TTS 기반 자연스러운 음성 생성
 - 🌀 **Async Processing**: Celery + Redis 기반 비동기 작업 처리
 - 📦 **Object Storage**: MinIO에 결과 파일 저장 (일정 시간 후 자동 삭제)
+- 🔁 **Singleton-Based Audio Separation**: Spleeter 싱글톤 + 락 기반 실행 안정성 강화
 - ⚡ **FastAPI + React** 실시간 처리 웹서비스 구조
 - 🔄 **Pagination Scroll Reset**: 페이징(Next/Prev) 시 자동 스크롤 맨 위 이동 UX 개선
 
@@ -58,6 +60,7 @@ graph TD
 - FastAPI (메인 API 서버)
 - yt-dlp: YouTube 오디오 다운로드
 - Spleeter: 오디오 소스 분리 (보컬/반주)
+  - ✅ **싱글톤(Singleton) + 락 기반 처리**로 TensorFlow Nesting 오류 회피 및 리소스 효율성 향상
 - Edge-TTS: 텍스트 음성 합성 (TTS)
 
 ### 🔹 Infrastructure
