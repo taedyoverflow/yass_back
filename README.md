@@ -8,6 +8,7 @@ Spleeter AI를 통해 보컬과 반주(MR)를 분리할 수 있습니다.
 또한 텍스트 입력만으로 자연스러운 음성을 생성하는  
 Edge-TTS 기반 TTS(Text-to-Speech) 기능도 함께 제공합니다.  
 분리된 음원과 변환된 음성은 스트리밍하거나 다운로드할 수 있습니다.
+- (※ 기존 Blob 방식 대신 URL 기반 처리 방식으로 변경하여 모바일 호환성 및 속도 개선)
 
 ---
 
@@ -22,7 +23,10 @@ Edge-TTS 기반 TTS(Text-to-Speech) 기능도 함께 제공합니다.
 
 - ✅ **YouTube Search**: 유튜브 영상 검색 및 썸네일 리스트 제공
 - 🎤 **Audio Separation**: 보컬 / 반주 분리 (powered by Spleeter)
-- 🎧 **Streaming & Download**: 실시간 Blob 스트리밍 및 다운로드 지원
+- 🎧 **Streaming & Download**: 
+-     - ✅ **초기엔 Blob 스트리밍**을 사용했지만,
+-     - 📱 모바일 Chrome/Safari의 미디어 재생 이슈, 속도 저하 등을 고려하여
+-     - 현재는 **MinIO의 URL 기반 스트리밍/다운로드 방식**으로 전환
 - 🗣️ **Text-to-Speech**: Edge-TTS 기반 자연스러운 음성 생성
 - 🌀 **Async Processing**: Celery + Redis 기반 비동기 작업 처리
 - 📦 **Object Storage**: MinIO에 결과 파일 저장 (일정 시간 후 자동 삭제)
@@ -52,7 +56,8 @@ graph TD
 ### 🔹 Frontend
 
 - React (with Material UI)
-- Blob 기반 오디오 스트리밍 및 다운로드 기능 구현
+- 초기에는 Blob 기반 오디오 스트리밍 및 다운로드 기능 구현
+- → 현재는 **MinIO의 정적 URL을 직접 사용**하여 브라우저 호환성과 속도 개선
 - **Pagination UX 개선**: 페이지 전환 시 자동 스크롤 최상단 이동
 
 ### 🔹 Backend
@@ -83,7 +88,9 @@ graph TD
 3. Celery Worker는 yt-dlp로 오디오 다운로드 → Spleeter 분리 or TTS 합성
 4. MinIO에 결과 파일 저장 (일정 시간 후 자동 삭제)
 5. FastAPI는 task_id 기반으로 상태 및 결과를 주기적으로 확인
-6. 완료된 결과 파일은 Blob URL로 프론트에 전달 → 실시간 스트리밍 or 다운로드 가능
+- 6. 완료된 결과 파일은 MinIO의 정적 URL로 프론트에 전달됨
+- 7. 프론트는 해당 URL을 `<audio>`의 `src`로 사용하여 즉시 스트리밍 가능하며,
+      다운로드 링크에도 동일한 URL 사용
 
 ---
 

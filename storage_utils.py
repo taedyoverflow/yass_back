@@ -15,7 +15,7 @@ def upload_to_minio(file_path: str, bucket: str, object_name: str):
 
     content_type, _ = mimetypes.guess_type(file_path)
     if not content_type:
-        content_type = "application/octet-stream"  # fallback
+        content_type = "audio/wav"
 
     client.fput_object(
         bucket_name=bucket,
