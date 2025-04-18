@@ -27,4 +27,9 @@ def upload_to_minio(file_path: str, bucket: str, object_name: str):
     return f"https://yass-ai.com/minio/{bucket}/{object_name}"
 
 def delete_from_minio(bucket: str, object_name: str):
-    client.remove_object(bucket, object_name)
+    try:
+        print(f"🗑️ [delete_from_minio] 삭제 시도: {bucket}/{object_name}")
+        client.remove_object(bucket, object_name)
+        print(f"✅ [delete_from_minio] 삭제 성공: {bucket}/{object_name}")
+    except Exception as e:
+        print(f"❌ [delete_from_minio] 삭제 실패: {bucket}/{object_name}, 이유: {str(e)}")
