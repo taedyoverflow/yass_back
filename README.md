@@ -1,4 +1,3 @@
-
 # 🎧 YASS AI
 
 🔗 **Live URL**: [https://yass-ai.com](https://yass-ai.com)
@@ -22,7 +21,8 @@ Edge-TTS 기반 TTS(Text-to-Speech) 기능도 함께 제공합니다.
 
 ## 🔍 Features
 
-- ✅ **YouTube Search**: 유튜브 영상 검색 및 썸네일 리스트 제공
+- ✅ **YouTube Search**: 유튜브 영상 검색 및 썸네일 리스트 제공  
+  👉 **Google의 YouTube Data API v3 사용**  
   👉 **영상 썸네일 클릭 시 URL 입력란에 자동 채워지는 UX 적용**
 - 🎤 **Audio Separation**: 보컬 / 반주 분리 (powered by Spleeter)
 - 🎧 **Streaming & Download**:  
@@ -66,6 +66,7 @@ graph TD
 ### 🔹 Backend
 
 - FastAPI (메인 API 서버)
+- YouTube Data API v3: **검색어 기반 유튜브 영상 검색 기능 구현에 사용**
 - yt-dlp: YouTube 오디오 다운로드
 - Spleeter: 오디오 소스 분리 (보컬/반주)
   - ✅ **싱글톤(Singleton) + 락 기반 처리**로 TensorFlow Nesting 오류 회피 및 리소스 효율성 향상
