@@ -1,3 +1,4 @@
+
 # 🎧 YASS AI
 
 🔗 **Live URL**: [https://yass-ai.com](https://yass-ai.com)
@@ -7,8 +8,8 @@ YouTube Audio Separation and Streaming AI
 Spleeter AI를 통해 보컬과 반주(MR)를 분리할 수 있습니다.  
 또한 텍스트 입력만으로 자연스러운 음성을 생성하는  
 Edge-TTS 기반 TTS(Text-to-Speech) 기능도 함께 제공합니다.  
-분리된 음원과 변환된 음성은 스트리밍하거나 다운로드할 수 있습니다.
-- (※ 기존 Blob 방식 대신 URL 기반 처리 방식으로 변경하여 모바일 호환성 및 속도 개선)
+분리된 음원과 변환된 음성은 스트리밍하거나 다운로드할 수 있습니다.  
+👉 (※ 기존 Blob 방식 대신 URL 기반 처리 방식으로 변경하여 모바일 호환성 및 속도 개선)
 
 ---
 
@@ -22,11 +23,12 @@ Edge-TTS 기반 TTS(Text-to-Speech) 기능도 함께 제공합니다.
 ## 🔍 Features
 
 - ✅ **YouTube Search**: 유튜브 영상 검색 및 썸네일 리스트 제공
+  👉 **영상 썸네일 클릭 시 URL 입력란에 자동 채워지는 UX 적용**
 - 🎤 **Audio Separation**: 보컬 / 반주 분리 (powered by Spleeter)
-- 🎧 **Streaming & Download**: 
--     - ✅ **초기엔 Blob 스트리밍**을 사용했지만,
--     - 📱 모바일 Chrome/Safari의 미디어 재생 이슈, 속도 저하 등을 고려하여
--     - 현재는 **MinIO의 URL 기반 스트리밍/다운로드 방식**으로 전환
+- 🎧 **Streaming & Download**:  
+  ✅ 초기엔 Blob 스트리밍을 사용했지만,  
+  📱 모바일 Chrome/Safari의 미디어 재생 이슈, 속도 저하 등을 고려하여  
+  현재는 MinIO의 URL 기반 스트리밍/다운로드 방식으로 전환
 - 🗣️ **Text-to-Speech**: Edge-TTS 기반 자연스러운 음성 생성
 - 🌀 **Async Processing**: Celery + Redis 기반 비동기 작업 처리
 - 📦 **Object Storage**: MinIO에 결과 파일 저장 (일정 시간 후 자동 삭제)
@@ -43,7 +45,7 @@ graph TD
     A[React Frontend] -->|JSON Request| B(FastAPI Backend)
     B -->|Send Task| C[Celery Worker]
     C -->|Split Audio / TTS| D[MinIO Storage]
-    D -->|Blob URL| B
+    D -->|Static URL| B
     B -->|Final Response| A
     B -->|Status & Result Polling| C
     C -->|Task Completion| B
@@ -56,8 +58,9 @@ graph TD
 ### 🔹 Frontend
 
 - React (with Material UI)
+- 유저 편의를 위한 **검색 결과 클릭 → URL 자동 입력 기능** 구현
 - 초기에는 Blob 기반 오디오 스트리밍 및 다운로드 기능 구현
-- → 현재는 **MinIO의 정적 URL을 직접 사용**하여 브라우저 호환성과 속도 개선
+- → 현재는 MinIO의 정적 URL을 직접 사용하여 브라우저 호환성과 속도 개선
 - **Pagination UX 개선**: 페이지 전환 시 자동 스크롤 최상단 이동
 
 ### 🔹 Backend
@@ -83,21 +86,20 @@ graph TD
 
 ## 🔁 비동기 요청 처리 흐름
 
-1. 유저가 YouTube URL 또는 TTS 텍스트 입력 후 요청
-2. FastAPI는 해당 요청을 Celery 태스크로 전달하고 `task_id` 반환
-3. Celery Worker는 yt-dlp로 오디오 다운로드 → Spleeter 분리 or TTS 합성
-4. MinIO에 결과 파일 저장 (일정 시간 후 자동 삭제)
-5. FastAPI는 task_id 기반으로 상태 및 결과를 주기적으로 확인
-- 6. 완료된 결과 파일은 MinIO의 정적 URL로 프론트에 전달됨
-- 7. 프론트는 해당 URL을 `<audio>`의 `src`로 사용하여 즉시 스트리밍 가능하며,
-      다운로드 링크에도 동일한 URL 사용
+1. 유저가 YouTube URL 또는 TTS 텍스트 입력 후 요청  
+2. FastAPI는 해당 요청을 Celery 태스크로 전달하고 `task_id` 반환  
+3. Celery Worker는 yt-dlp로 오디오 다운로드 → Spleeter 분리 or TTS 합성  
+4. MinIO에 결과 파일 저장 (일정 시간 후 자동 삭제)  
+5. FastAPI는 task_id 기반으로 상태 및 결과를 주기적으로 확인  
+6. 완료된 결과 파일은 MinIO의 정적 URL로 프론트에 전달됨  
+7. 프론트는 해당 URL을 `<audio>`의 `src`로 사용하여 즉시 스트리밍 가능하며, 다운로드 링크에도 동일한 URL 사용
 
 ---
 
 ## 💡 만든 이유
 
-- 직접 필요해서 만들었어요
-- 아무도 개발 안 시켜줘서 스스로 만들어봤습니다
+- 직접 필요해서 만들었어요  
+- 아무도 개발 안 시켜줘서 스스로 만들어봤습니다  
 - 실전에서 돌아가는 AI 웹서비스를 구현해보고 싶었어요
 
 ---

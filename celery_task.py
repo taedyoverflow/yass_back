@@ -26,8 +26,8 @@ def generate_unique_filename(prefix: str, ext: str = "wav") -> str:
 # 🎯 MinIO 업로드 후 삭제 예약
 def upload_with_deletion(bucket: str, file_path: str, object_name: str) -> str:
     url = upload_to_minio(file_path, bucket, object_name)
-    schedule_deletion.apply_async(args=[bucket, object_name], countdown=600)
-    logger.info(f"🕒 삭제 예약 완료 (600초 후): {object_name}")
+    schedule_deletion.apply_async(args=[bucket, object_name], countdown=360)
+    logger.info(f"🕒 삭제 예약 완료 (360초 후): {object_name}")
     return url
 
 @celery_app.task
