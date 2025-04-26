@@ -1,5 +1,7 @@
 import os
 import subprocess
+import librosa  # ✅ 이거 추가
+import numpy as np
 from spleeter.separator import Separator
 import threading
 import logging
@@ -14,6 +16,7 @@ from audio_utils import download_audio, separate_audio, separate_audio_demucs
 from storage_utils import upload_to_minio, delete_from_minio
 import traceback
 from basicpitch_utils import convert_to_midi, convert_midi_to_pdf
+
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -164,13 +167,24 @@ def midi_conversion_task(self, file_bytes: bytes):
     logger.info("🎼 MIDI 변환 작업 시작")
     temp_dir = tempfile.mkdtemp()
     try:
+        input_path = os.path.join(temp_dir, "input.wav")
+        with open(input_path, "wb") as f:
+            f.write(file_bytes)
+
+        # ✅ 여기서 길이 체크
+        y, sr = librosa.load(input_path, sr=None)  # 샘플레이트 유지
+        duration = librosa.get_duration(y=y, sr=sr)
+
+        if duration > 360:
+            logger.error(f"❌ WAV 파일 길이 초과: {duration:.2f}초")
+            raise ValueError("업로드한 WAV 파일이 6분(360초)을 초과합니다.")
+
         output_name = generate_unique_filename("midi", ext="mid")
         output_path, bpm = convert_to_midi(file_bytes, temp_dir, output_name)
 
         midi_url = upload_with_deletion("midi-bucket", output_path, output_name)
         logger.info(f"✅ MIDI 업로드 및 삭제 예약 완료 - URL: {midi_url}")
 
-        # PDF 변환 및 업로드
         pdf_name = output_name.replace(".mid", ".pdf")
         pdf_path = os.path.join(temp_dir, pdf_name)
         convert_midi_to_pdf(output_path, pdf_path)

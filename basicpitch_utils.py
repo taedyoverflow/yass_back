@@ -25,7 +25,7 @@ def convert_to_midi(file_bytes: bytes, output_dir: str, output_filename: str) ->
     return output_path, round(bpm)
 
 def convert_midi_to_pdf(midi_path: str, pdf_path: str):
-    musescore_path = r"C:\Program Files\MuseScore 4\bin\MuseScore4.exe"
+    musescore_path = "/usr/bin/musescore"
     result = subprocess.run([musescore_path, midi_path, "-o", pdf_path], capture_output=True)
 
     if result.returncode != 0:
