@@ -10,7 +10,7 @@ from datetime import datetime
 from celery import Celery
 from celery_worker import celery_app
 from mytts import run_tts_task
-from audio_utils import download_audio, separate_audio
+from audio_utils import download_audio, separate_audio, separate_audio_demucs
 from storage_utils import upload_to_minio, delete_from_minio
 import traceback
 
@@ -101,6 +101,59 @@ def tts_task(self, text: str, voice: str):
         logger.error(f"❌ TTS 작업 실패: {e}")
         traceback.print_exc()
         raise self.retry(exc=e, countdown=10, max_retries=3)
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        logger.info(f"🧹 임시 폴더 정리 완료: {temp_dir}")
+
+@celery_app.task(bind=True)
+def process_audio_demucs_task(self, youtube_url: str):
+    logger.info("🚀 process_audio_demucs_task 시작")
+    temp_dir = tempfile.mkdtemp()
+    logger.info(f"📁 임시 폴더 생성됨: {temp_dir}")
+
+    try:
+        input_path = download_audio(youtube_url, temp_dir)
+        logger.info(f"✅ 다운로드 완료: {input_path}")
+
+        parts = separate_audio_demucs(input_path, temp_dir)
+        logger.info("✅ Demucs 분리 완료")
+
+        # 각각 파일 이름 생성
+        vocal_name = generate_unique_filename("demucs_vocals")
+        drums_name = generate_unique_filename("demucs_drums")
+        bass_name = generate_unique_filename("demucs_bass")
+        other_name = generate_unique_filename("demucs_other")
+
+        # 최종 파일 복사
+        vocal_final = os.path.join(temp_dir, vocal_name)
+        drums_final = os.path.join(temp_dir, drums_name)
+        bass_final = os.path.join(temp_dir, bass_name)
+        other_final = os.path.join(temp_dir, other_name)
+
+        shutil.copyfile(parts["vocals"], vocal_final)
+        shutil.copyfile(parts["drums"], drums_final)
+        shutil.copyfile(parts["bass"], bass_final)
+        shutil.copyfile(parts["other"], other_final)
+
+        # ✅ 미니오에 업로드
+        vocal_url = upload_with_deletion("demucs-bucket", vocal_final, vocal_name)
+        drums_url = upload_with_deletion("demucs-bucket", drums_final, drums_name)
+        bass_url = upload_with_deletion("demucs-bucket", bass_final, bass_name)
+        other_url = upload_with_deletion("demucs-bucket", other_final, other_name)
+
+        return {
+            "vocal_url": vocal_url,
+            "drums_url": drums_url,
+            "bass_url": bass_url,
+            "other_url": other_url
+        }
+
+    except Exception as e:
+        logger.error("❌ 예외 발생:")
+        import traceback
+        traceback.print_exc()
+        raise self.retry(exc=e, countdown=10, max_retries=3)
+
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
         logger.info(f"🧹 임시 폴더 정리 완료: {temp_dir}")

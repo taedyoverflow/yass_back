@@ -71,3 +71,45 @@ def separate_audio(audio_path: str, temp_dir: str) -> tuple[str, str]:
 
     logger.info(f"✅ [separate_audio] 분리 완료: vocals={vocals_path}, accomp={accompaniment_path}")
     return vocals_path, accompaniment_path
+
+def separate_audio_demucs(audio_path: str, temp_dir: str) -> dict:
+    """
+    🎵 Demucs를 이용해 오디오 파일을 4개 트랙(vocals, drums, bass, other)으로 분리합니다.
+    """
+    logger.info("🎧 [separate_audio_demucs] Demucs 분리 시작")
+
+    with spleeter_lock:  # ✅ 병렬 요청 막기
+        command = [
+            "demucs",
+            "--out", temp_dir,
+            audio_path  # ⬅️ 여기서는 --two-stems=none 옵션 없이
+        ]
+        logger.info(f"⚙️ [separate_audio_demucs] demucs 명령어: {' '.join(command)}")
+
+        try:
+            subprocess.run(command, check=True, timeout=300)
+            logger.info("✅ [separate_audio_demucs] demucs 명령어 실행 완료")
+        except subprocess.TimeoutExpired:
+            logger.warning("⏱️ [separate_audio_demucs] demucs 타임아웃: 5분 내에 완료되지 않음")
+            raise
+        except Exception as e:
+            logger.error(f"❌ [separate_audio_demucs] demucs 실행 중 오류 발생: {e}")
+            raise
+
+    # 출력 경로 구성
+    base_name = os.path.splitext(os.path.basename(audio_path))[0]
+    output_dir = os.path.join(temp_dir, "htdemucs", base_name)  # ⬅️ 주의! 보통 'demucs'가 아니라 모델 이름 폴더로 나옴
+
+    vocals_path = os.path.join(output_dir, "vocals.wav")
+    drums_path = os.path.join(output_dir, "drums.wav")
+    bass_path = os.path.join(output_dir, "bass.wav")
+    other_path = os.path.join(output_dir, "other.wav")
+
+    logger.info(f"✅ [separate_audio_demucs] 분리 완료: vocals={vocals_path}, drums={drums_path}, bass={bass_path}, other={other_path}")
+
+    return {
+        "vocals": vocals_path,
+        "drums": drums_path,
+        "bass": bass_path,
+        "other": other_path
+    }
