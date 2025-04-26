@@ -1,0 +1,32 @@
+import os
+import librosa
+import numpy as np
+from basic_pitch.inference import predict
+import subprocess
+
+def convert_to_midi(file_bytes: bytes, output_dir: str, output_filename: str) -> tuple:
+    input_path = os.path.join(output_dir, "input.wav")
+    with open(input_path, "wb") as f:
+        f.write(file_bytes)
+
+    y, sr = librosa.load(input_path)
+    tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+
+    # ✅ numpy 배열인지 체크하고 BPM 추출
+    if isinstance(tempo, (list, np.ndarray)):
+        bpm = float(tempo[0]) if len(tempo) > 0 else 0
+    else:
+        bpm = float(tempo)
+
+    _, midi_data, _ = predict(input_path)
+    output_path = os.path.join(output_dir, output_filename)
+    midi_data.write(output_path)
+
+    return output_path, round(bpm)
+
+def convert_midi_to_pdf(midi_path: str, pdf_path: str):
+    musescore_path = r"C:\Program Files\MuseScore 4\bin\MuseScore4.exe"
+    result = subprocess.run([musescore_path, midi_path, "-o", pdf_path], capture_output=True)
+
+    if result.returncode != 0:
+        raise RuntimeError(f"❌ MuseScore PDF 변환 실패: {result.stderr.decode()}")

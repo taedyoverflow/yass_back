@@ -13,6 +13,7 @@ from mytts import run_tts_task
 from audio_utils import download_audio, separate_audio, separate_audio_demucs
 from storage_utils import upload_to_minio, delete_from_minio
 import traceback
+from basicpitch_utils import convert_to_midi, convert_midi_to_pdf
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -150,6 +151,39 @@ def process_audio_demucs_task(self, youtube_url: str):
 
     except Exception as e:
         logger.error("❌ 예외 발생:")
+        import traceback
+        traceback.print_exc()
+        raise self.retry(exc=e, countdown=10, max_retries=3)
+
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        logger.info(f"🧹 임시 폴더 정리 완료: {temp_dir}")
+
+@celery_app.task(bind=True)
+def midi_conversion_task(self, file_bytes: bytes):
+    logger.info("🎼 MIDI 변환 작업 시작")
+    temp_dir = tempfile.mkdtemp()
+    try:
+        output_name = generate_unique_filename("midi", ext="mid")
+        output_path, bpm = convert_to_midi(file_bytes, temp_dir, output_name)
+
+        midi_url = upload_with_deletion("midi-bucket", output_path, output_name)
+        logger.info(f"✅ MIDI 업로드 및 삭제 예약 완료 - URL: {midi_url}")
+
+        # PDF 변환 및 업로드
+        pdf_name = output_name.replace(".mid", ".pdf")
+        pdf_path = os.path.join(temp_dir, pdf_name)
+        convert_midi_to_pdf(output_path, pdf_path)
+        sheet_url = upload_with_deletion("sheet-bucket", pdf_path, pdf_name)
+
+        return {
+            "midi_url": midi_url,
+            "bpm": bpm,
+            "sheet_url": sheet_url
+        }
+
+    except Exception as e:
+        logger.error("❌ MIDI 변환 실패")
         import traceback
         traceback.print_exc()
         raise self.retry(exc=e, countdown=10, max_retries=3)
