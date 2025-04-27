@@ -3,6 +3,10 @@ import librosa
 import numpy as np
 from basic_pitch.inference import predict
 import subprocess
+import threading
+
+# ✅ 락 추가 (TensorFlow Graph 충돌 방지용)
+_basic_pitch_lock = threading.Lock()
 
 def convert_to_midi(file_bytes: bytes, output_dir: str, output_filename: str) -> tuple:
     input_path = os.path.join(output_dir, "input.wav")
@@ -12,13 +16,14 @@ def convert_to_midi(file_bytes: bytes, output_dir: str, output_filename: str) ->
     y, sr = librosa.load(input_path)
     tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
 
-    # ✅ numpy 배열인지 체크하고 BPM 추출
     if isinstance(tempo, (list, np.ndarray)):
         bpm = float(tempo[0]) if len(tempo) > 0 else 0
     else:
         bpm = float(tempo)
 
-    _, midi_data, _ = predict(input_path)
+    with _basic_pitch_lock:
+        _, midi_data, _ = predict(input_path)  # ✅ 0.4.0은 input_path만 넘긴다
+
     output_path = os.path.join(output_dir, output_filename)
     midi_data.write(output_path)
 
