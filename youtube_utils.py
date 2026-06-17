@@ -1,14 +1,23 @@
 import subprocess
 import json
 
-YTDLP_CMD = [
-    "/usr/bin/sudo", "-u", "user1",
-    "/home/user1/.local/bin/yt-dlp",
-    "--cookies-from-browser", "chrome"
-]
+YTDLP_BIN = "/home/user1/yass_back/venv/bin/yt-dlp"
+YTDLP_USER = "user1"
+YTDLP_ENV_PATH = "/home/user1/.deno/bin:/usr/local/bin:/usr/bin:/bin"
+
+
+def build_ytdlp_command(*args: str) -> list[str]:
+    return [
+        "/usr/bin/sudo", "-u", YTDLP_USER,
+        "env", f"PATH={YTDLP_ENV_PATH}",
+        YTDLP_BIN,
+        "--cookies-from-browser", "chrome",
+        *args,
+    ]
+
 
 def get_video_duration(url: str) -> int:
-    command = YTDLP_CMD + ["--skip-download", "--print-json", url]
+    command = build_ytdlp_command("--skip-download", "--print-json", url)
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         info = json.loads(result.stdout)
@@ -23,8 +32,9 @@ def get_video_duration(url: str) -> int:
         print(f"duration 추출 중 오류: {e}")
         return -1
 
+
 def validate_youtube_exists(url: str) -> bool:
-    command = YTDLP_CMD + ["--skip-download", "--print-json", url]
+    command = build_ytdlp_command("--skip-download", "--print-json", url)
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         info = json.loads(result.stdout)

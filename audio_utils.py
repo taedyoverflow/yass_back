@@ -3,6 +3,7 @@ import subprocess
 from spleeter.separator import Separator
 import threading
 import logging
+from youtube_utils import build_ytdlp_command
 
 # 락은 그대로 유지
 spleeter_lock = threading.Lock()
@@ -26,14 +27,11 @@ def download_audio(youtube_url: str, temp_dir: str) -> str:
     output_path = os.path.join(temp_dir, "input.%(ext)s")
 
     logger.info("서버 환경 구성 중")
-    command = [
-        "/usr/bin/sudo", "-u", "user1",
-        "/home/user1/.local/bin/yt-dlp",
-        "--cookies-from-browser", "chrome",
+    command = build_ytdlp_command(
         "-x", "--audio-format", "mp3",
         "-o", output_path,
-        youtube_url
-    ]
+        youtube_url,
+    )
 
     logger.info(f"[download_audio] yt-dlp 명령어: {' '.join(command)}")
 
