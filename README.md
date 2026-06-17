@@ -1,6 +1,6 @@
 # YASS AI
 
-**Live URL**: [https://yass-ai.com](https://yass-ai.com)
+**Live URL**: [https://yass-ai.site](https://yass-ai.site)
 
 YouTube Audio Separation, TTS, MIDI Conversion AI
 
@@ -24,35 +24,11 @@ YouTube Audio Separation, TTS, MIDI Conversion AI
 
 ---
 
-## Architecture (YouTube Audio Separation / TTS)
+## Architecture
 
-```mermaid
-flowchart TD
-    A[React Frontend] -->|JSON Request| B(FastAPI Backend)
-    B -->|Send Task| C[Celery Worker]
-    C -->|Download/Separate/TTS| D[MinIO Public Bucket]
-    D -->|Public URL| B
-    B -->|Response| A
-    A -->|Polling (5 sec)| B
-```
+Separation과 TTS 결과는 **MinIO Public Bucket**에 저장되어 Presigned URL 없이도 접근 가능합니다.
 
-> 🎯 Separation과 TTS 결과는 **MinIO Public Bucket**에 저장되어 Presigned URL 없이도 접근 가능합니다.
-
-
----
-
-## Architecture (Audio to MIDI Conversion)
-
-```mermaid
-flowchart TD
-    A[React Frontend] -->|File Upload (wav)| B(FastAPI Backend)
-    B -->|Send Task| C[Celery Worker]
-    C -->|Basic Pitch + MuseScore| D[MinIO Public Bucket]
-    D -->|MIDI URL + PDF URL| B
-    B -->|Response| A
-```
-
-> 🎼 오디오 파일 업로드 후, Basic Pitch 모델로 MIDI 변환 → MuseScore로 PDF 악보 변환 → MinIO 저장 구조입니다.
+오디오 파일 업로드 후, Basic Pitch 모델로 MIDI 변환, MuseScore로 PDF 악보 변환, MinIO 저장 구조입니다.
 
 
 ---
@@ -79,7 +55,7 @@ flowchart TD
 - Docker (Frontend, Infrastructure 구성용)
 - Nginx + Certbot (HTTPS Reverse Proxy)
 
-> ⚡ FastAPI 서버는 현재 Docker 외부 `user1` 가상환경에서 구동 중입니다. (Chrome 세션 기반 yt-dlp 인증 유지 목적)
+FastAPI 서버는 현재 Docker 외부 `user1` 가상환경에서 구동 중입니다. (Chrome 세션 기반 yt-dlp 인증 유지 목적)
 
 
 ---
@@ -116,6 +92,6 @@ flowchart TD
 
 ## Contact
 
-📧 Email: [taedyoverflow@gmail.com](mailto:taedyoverflow@gmail.com)
+Email: [taedyoverflow@gmail.com](mailto:taedyoverflow@gmail.com)
 
-🧠 Made by **Taedy**
+Made by **Taedy**

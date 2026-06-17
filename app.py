@@ -30,20 +30,20 @@ def submit_audio(youtube: YoutubeURL):
     if not validate_youtube_exists(youtube.url):
         raise HTTPException(
             status_code=404,
-            detail="❌ 해당 유튜브 영상이 존재하지 않거나 접근할 수 없습니다."
+            detail="해당 유튜브 영상이 존재하지 않거나 접근할 수 없습니다."
         )
 
     duration = get_video_duration(youtube.url)
     if duration == -1:
         raise HTTPException(
             status_code=500,
-            detail="⛔ 영상 길이를 확인할 수 없습니다. 잠시 후 다시 시도해주세요."
+            detail="영상 길이를 확인할 수 없습니다. 잠시 후 다시 시도해주세요."
         )
 
     if duration > 360:
         raise HTTPException(
             status_code=400,
-            detail="❌ 6분을 초과하는 유튜브 영상은 분리할 수 없습니다."
+            detail="6분을 초과하는 유튜브 영상은 분리할 수 없습니다."
         )
 
     task = process_audio_task.delay(youtube.url)
@@ -105,20 +105,20 @@ def submit_audio_demucs(youtube: YoutubeURL):
     if not validate_youtube_exists(youtube.url):
         raise HTTPException(
             status_code=404,
-            detail="❌ 해당 유튜브 영상이 존재하지 않거나 접근할 수 없습니다."
+            detail="해당 유튜브 영상이 존재하지 않거나 접근할 수 없습니다."
         )
 
     duration = get_video_duration(youtube.url)
     if duration == -1:
         raise HTTPException(
             status_code=500,
-            detail="⛔ 영상 길이를 확인할 수 없습니다. 잠시 후 다시 시도해주세요."
+            detail="영상 길이를 확인할 수 없습니다. 잠시 후 다시 시도해주세요."
         )
 
     if duration > 360:
         raise HTTPException(
             status_code=400,
-            detail="❌ 6분을 초과하는 유튜브 영상은 분리할 수 없습니다."
+            detail="6분을 초과하는 유튜브 영상은 분리할 수 없습니다."
         )
 
     task = process_audio_demucs_task.delay(youtube.url)

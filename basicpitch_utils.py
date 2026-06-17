@@ -5,7 +5,7 @@ from basic_pitch.inference import predict
 import subprocess
 import threading
 
-# ✅ 락 추가 (TensorFlow Graph 충돌 방지용)
+# 락 추가 (TensorFlow Graph 충돌 방지용)
 _basic_pitch_lock = threading.Lock()
 
 def convert_to_midi(file_bytes: bytes, output_dir: str, output_filename: str) -> tuple:
@@ -22,7 +22,7 @@ def convert_to_midi(file_bytes: bytes, output_dir: str, output_filename: str) ->
         bpm = float(tempo)
 
     with _basic_pitch_lock:
-        _, midi_data, _ = predict(input_path)  # ✅ 0.4.0은 input_path만 넘긴다
+        _, midi_data, _ = predict(input_path)
 
     output_path = os.path.join(output_dir, output_filename)
     midi_data.write(output_path)
@@ -34,4 +34,4 @@ def convert_midi_to_pdf(midi_path: str, pdf_path: str):
     result = subprocess.run(["xvfb-run", "-a", musescore_path, midi_path, "-o", pdf_path], capture_output=True)
 
     if result.returncode != 0:
-        raise RuntimeError(f"❌ MuseScore PDF 변환 실패: {result.stderr.decode()}")
+        raise RuntimeError(f"MuseScore PDF 변환 실패: {result.stderr.decode()}")
