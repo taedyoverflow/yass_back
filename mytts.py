@@ -1,17 +1,15 @@
-import edge_tts
-import asyncio
+from gtts import gTTS
+import re
 
 def run_tts_task(text: str, voice: str, output_path: str):
     try:
-        async def do_tts():
-            communicate = edge_tts.Communicate(text, voice)
-            await communicate.save(output_path)
-
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(do_tts())
-        loop.run_until_complete(asyncio.sleep(0.5))
-        loop.close()
+        # 텍스트에 한글이 있는지 확인하여 언어 자동 감지
+        has_korean = bool(re.search(r'[가-힣]', text))
+        lang = 'ko' if has_korean else 'en'
+        
+        # gTTS로 음성 생성
+        tts = gTTS(text=text, lang=lang, slow=False)
+        tts.save(output_path)
 
         print(f"TTS 저장 완료: {output_path}")
     except Exception as e:

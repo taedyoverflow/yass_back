@@ -15,7 +15,7 @@ YouTube Audio Separation, TTS, MIDI Conversion AI
   - Spleeter 기반 (보컬/반주 2트랙 분리)
   - Demucs 기반 (보컬/드럼/베이스/기타 4트랙 분리)
 - **Streaming & Download**: MinIO Public Bucket URL을 통해 직접 스트리밍/다운로드
-- **Text-to-Speech**: Edge-TTS 기반 자연스러운 음성 생성
+- **Text-to-Speech**: Google TTS (gTTS) 기반 음성 생성
 - **Audio to MIDI Conversion**: Basic Pitch 기반 오디오(MR) -> MIDI 변환 및 악보(PDF) 제공
 - **Async Processing**: Celery + Redis 기반 비동기 작업 처리
 - **Object Storage**: MinIO에 파일 저장 (일정 시간 후 자동 삭제)
@@ -46,7 +46,7 @@ Separation과 TTS 결과는 **MinIO Public Bucket**에 저장되어 Presigned UR
 - yt-dlp (YouTube 오디오 다운로드)
 - Spleeter (오디오 소스 분리)
 - Demucs (AI 기반 고급 오디오 소스 분리)
-- Edge-TTS (텍스트 음성 변환)
+- gTTS (Google Text-to-Speech, 텍스트 음성 변환)
 - Basic Pitch (오디오 -> MIDI 변환)
 - MuseScore (MIDI -> PDF 악보 변환)
 
