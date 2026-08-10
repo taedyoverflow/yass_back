@@ -1,0 +1,3 @@
+# CPU 서버용 CrisperWhisper 2.0 (transformers / PyTorch)
+# 설치: pip install -r requirements-stt.txt
+crisperwhisper[transformers]>=2.0.0

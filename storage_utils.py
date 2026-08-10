@@ -33,3 +33,7 @@ def delete_from_minio(bucket: str, object_name: str):
         print(f"[delete_from_minio] 삭제 성공: {bucket}/{object_name}")
     except Exception as e:
         print(f"[delete_from_minio] 삭제 실패: {bucket}/{object_name}, 이유: {str(e)}")
+
+def download_from_minio(bucket: str, object_name: str, file_path: str):
+    client.fget_object(bucket, object_name, file_path)
+    return file_path

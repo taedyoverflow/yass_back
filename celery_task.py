@@ -12,8 +12,9 @@ from datetime import datetime
 from celery import Celery
 from celery_worker import celery_app
 from mytts import run_tts_task
+from mystt import run_stt_task
 from audio_utils import download_audio, separate_audio, separate_audio_demucs
-from storage_utils import upload_to_minio, delete_from_minio
+from storage_utils import upload_to_minio, delete_from_minio, download_from_minio
 import traceback
 from basicpitch_utils import convert_to_midi, convert_midi_to_pdf
 
@@ -28,10 +29,10 @@ def generate_unique_filename(prefix: str, ext: str = "wav") -> str:
     return f"{prefix}_{timestamp}_{unique_id}.{ext}"
 
 # MinIO 업로드 후 삭제 예약
-def upload_with_deletion(bucket: str, file_path: str, object_name: str) -> str:
+def upload_with_deletion(bucket: str, file_path: str, object_name: str, countdown: int = 360) -> str:
     url = upload_to_minio(file_path, bucket, object_name)
-    schedule_deletion.apply_async(args=[bucket, object_name], countdown=360)
-    logger.info(f"삭제 예약 완료 (360초 후): {object_name}")
+    schedule_deletion.apply_async(args=[bucket, object_name], countdown=countdown)
+    logger.info(f"삭제 예약 완료 ({countdown}초 후): {object_name}")
     return url
 
 @celery_app.task
@@ -148,6 +149,61 @@ def process_audio_demucs_task(self, youtube_url: str):
         import traceback
         traceback.print_exc()
         raise self.retry(exc=e, countdown=10, max_retries=3)
+
+    finally:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        logger.info(f"임시 폴더 정리 완료: {temp_dir}")
+
+# 최대 2시간 오디오 CPU 전사용. Redis로 바이너리를 넘기지 않고 MinIO object만 전달.
+@celery_app.task(bind=True, soft_time_limit=21600, time_limit=22200, max_retries=0)
+def stt_task(
+    self,
+    bucket: str,
+    object_name: str,
+    original_ext: str = ".wav",
+    language: str = "ko",
+    mode: str = "intended",
+    model_size: str = "turbo",
+):
+    logger.info(
+        "stt_task 시작: %s/%s model=%s language=%s mode=%s",
+        bucket,
+        object_name,
+        model_size,
+        language,
+        mode,
+    )
+    temp_dir = tempfile.mkdtemp()
+    try:
+        ext = original_ext if original_ext.startswith(".") else f".{original_ext}"
+        input_path = os.path.join(temp_dir, f"input{ext}")
+        download_from_minio(bucket, object_name, input_path)
+        logger.info("STT 입력 다운로드 완료: %s", input_path)
+
+        txt_name = generate_unique_filename("stt", ext="txt")
+        txt_path = os.path.join(temp_dir, txt_name)
+        text = run_stt_task(
+            audio_path=input_path,
+            output_txt_path=txt_path,
+            language=language,
+            mode=mode,
+            model_size=model_size,
+            timeout=21600,
+        )
+
+        # 결과 txt는 2시간 유지
+        transcript_url = upload_with_deletion("stt-bucket", txt_path, txt_name, countdown=7200)
+        logger.info("STT 업로드 완료: %s (%d chars)", transcript_url, len(text))
+
+        return {
+            "text": text,
+            "transcript_url": transcript_url,
+        }
+
+    except Exception as e:
+        logger.error("STT 작업 실패: %s", e)
+        traceback.print_exc()
+        raise
 
     finally:
         shutil.rmtree(temp_dir, ignore_errors=True)
