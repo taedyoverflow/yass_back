@@ -1,3 +1,7 @@
-# CPU 서버용 CrisperWhisper 2.0 (transformers / PyTorch)
-# 설치: pip install -r requirements-stt.txt
+# CrisperWhisper 전용 venv에만 설치하세요. (메인 venv와 분리)
+#   python3 -m venv venv_stt
+#   source venv_stt/bin/activate
+#   pip install -r requirements-stt.txt
+#
+# 메인 venv(spleeter/celery/gTTS)에 직접 설치하면 click/httpx/typer 충돌이 납니다.
 crisperwhisper[transformers]>=2.0.0

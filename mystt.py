@@ -31,6 +31,25 @@ MAX_STT_DURATION_SEC = 7200
 # 스테레오 WAV 2시간 규모까지 허용
 MAX_STT_UPLOAD_BYTES = 1600 * 1024 * 1024
 
+# 메인 venv(celery/spleeter/gTTS)와 click 등이 충돌하므로 STT는 별도 venv 권장.
+# 우선순위: STT_PYTHON 환경변수 → ./venv_stt/bin/python → 현재 인터프리터
+def get_stt_python() -> str:
+    env_python = os.environ.get("STT_PYTHON", "").strip()
+    if env_python and os.path.isfile(env_python):
+        return env_python
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    candidates = [
+        os.path.join(base_dir, "venv_stt", "bin", "python"),
+        os.path.join(base_dir, "venv_stt", "Scripts", "python.exe"),
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+
+    return sys.executable
+
+
 _STT_SCRIPT = r"""
 import json
 import sys
@@ -111,8 +130,10 @@ def run_stt_task(
         raise ValueError(f"지원하지 않는 언어입니다: {language}")
 
     out_json = output_txt_path + ".json"
+    stt_python = get_stt_python()
     logger.info(
-        "STT subprocess 시작: model=%s language=%s mode=%s file=%s",
+        "STT subprocess 시작: python=%s model=%s language=%s mode=%s file=%s",
+        stt_python,
         model_size,
         language,
         mode,
@@ -121,7 +142,7 @@ def run_stt_task(
 
     result = subprocess.run(
         [
-            sys.executable,
+            stt_python,
             "-c",
             _STT_SCRIPT,
             audio_path,
