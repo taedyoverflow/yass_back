@@ -26,6 +26,7 @@ from mystt import (
     MAX_STT_UPLOAD_BYTES,
     get_audio_duration_seconds,
     is_allowed_stt_filename,
+    preprocess_audio_for_stt,
 )
 
 app = FastAPI()
@@ -180,14 +181,24 @@ async def submit_stt(
                 detail="2시간(7200초)을 초과하는 음성 파일은 변환할 수 없습니다.",
             )
 
-        object_name = generate_unique_filename("stt_input", ext=ext.lstrip("."))
+        # 업로드 직후 16kHz mono mp3로 전처리 → MinIO/Celery 부담 감소
+        processed_path = os.path.join(temp_dir, "stt_16k_mono.mp3")
+        try:
+            preprocess_audio_for_stt(input_path, processed_path)
+            upload_path = processed_path
+            upload_ext = ".mp3"
+        except Exception:
+            upload_path = input_path
+            upload_ext = ext
+
+        object_name = generate_unique_filename("stt_input", ext=upload_ext.lstrip("."))
         # 긴 CPU 전사 동안 입력 파일이 남아 있도록 8시간 후 삭제
-        upload_with_deletion("stt-bucket", input_path, object_name, countdown=28800)
+        upload_with_deletion("stt-bucket", upload_path, object_name, countdown=28800)
 
         task = stt_task.delay(
             "stt-bucket",
             object_name,
-            ext,
+            upload_ext,
             language,
             mode,
             model_size,

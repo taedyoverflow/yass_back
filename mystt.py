@@ -50,6 +50,45 @@ def get_stt_python() -> str:
     return sys.executable
 
 
+def preprocess_audio_for_stt(input_path: str, output_path: str) -> str:
+    """
+    STT용 전처리: 16kHz / mono / 음성에 충분한 비트레이트.
+    Whisper는 내부적으로 16kHz를 쓰므로 품질 손실이 거의 없고,
+    디코딩·전송·로딩은 가벼워진다.
+    (주의: 추론 시간은 파일 용량이 아니라 오디오 '길이(초)'에 비례한다.)
+    """
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-i",
+        input_path,
+        "-vn",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-c:a",
+        "libmp3lame",
+        "-b:a",
+        "48k",
+        output_path,
+    ]
+    logger.info("STT 전처리 시작: %s -> %s", input_path, output_path)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    if result.returncode != 0 or not os.path.isfile(output_path):
+        logger.error("STT 전처리 실패: %s", result.stderr)
+        raise RuntimeError(result.stderr.strip() or "오디오 전처리에 실패했습니다.")
+
+    in_size = os.path.getsize(input_path)
+    out_size = os.path.getsize(output_path)
+    logger.info(
+        "STT 전처리 완료: %dKB -> %dKB (16kHz mono mp3)",
+        in_size // 1024,
+        out_size // 1024,
+    )
+    return output_path
+
+
 _STT_SCRIPT = r"""
 import json
 import sys
@@ -65,9 +104,25 @@ kwargs = {
 if language and language != "auto":
     kwargs["language"] = language
 
-model = CrisperWhisperModel(model_size, backend="transformers")
-result = model.transcribe(audio_path, **kwargs)
+# ct2(+int8)가 훨씬 빠름. 실패 시 transformers로 폴백.
+model = None
+last_error = None
+for backend, extra in (
+    ("ct2", {"compute_type": "int8"}),
+    ("transformers", {}),
+):
+    try:
+        model = CrisperWhisperModel(model_size, backend=backend, **extra)
+        print(f"[stt] backend={backend}", flush=True)
+        break
+    except Exception as exc:
+        last_error = exc
+        print(f"[stt] backend={backend} failed: {exc}", flush=True)
 
+if model is None:
+    raise RuntimeError(f"STT 모델 로드 실패: {last_error}")
+
+result = model.transcribe(audio_path, **kwargs)
 text = (getattr(result, "text", None) or "").strip()
 with open(out_json, "w", encoding="utf-8") as f:
     json.dump({"text": text}, f, ensure_ascii=False)
@@ -115,7 +170,7 @@ def run_stt_task(
     output_txt_path: str,
     language: str = "ko",
     mode: str = "intended",
-    model_size: str = "turbo",
+    model_size: str = "small",
     timeout: int = 21600,
 ) -> str:
     """
@@ -129,6 +184,15 @@ def run_stt_task(
     if language not in ALLOWED_LANGUAGES:
         raise ValueError(f"지원하지 않는 언어입니다: {language}")
 
+    work_dir = os.path.dirname(output_txt_path) or "."
+    preprocessed_path = os.path.join(work_dir, "stt_16k_mono.mp3")
+    try:
+        preprocess_audio_for_stt(audio_path, preprocessed_path)
+        stt_input = preprocessed_path
+    except Exception as e:
+        logger.warning("전처리 실패, 원본으로 진행: %s", e)
+        stt_input = audio_path
+
     out_json = output_txt_path + ".json"
     stt_python = get_stt_python()
     logger.info(
@@ -137,7 +201,7 @@ def run_stt_task(
         model_size,
         language,
         mode,
-        audio_path,
+        stt_input,
     )
 
     result = subprocess.run(
@@ -145,7 +209,7 @@ def run_stt_task(
             stt_python,
             "-c",
             _STT_SCRIPT,
-            audio_path,
+            stt_input,
             language,
             mode,
             model_size,
@@ -156,6 +220,8 @@ def run_stt_task(
         timeout=timeout,
     )
 
+    if result.stdout:
+        logger.info("STT stdout: %s", result.stdout.strip())
     if result.returncode != 0:
         logger.error("STT stderr: %s", result.stderr)
         logger.error("STT stdout: %s", result.stdout)

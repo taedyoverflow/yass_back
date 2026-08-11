@@ -1,7 +1,12 @@
-# CrisperWhisper 전용 venv에만 설치하세요. (메인 venv와 분리)
+# CrisperWhisper 전용 venv(venv_stt)에만 설치하세요.
+# GPU 없는 서버:
 #   python3 -m venv venv_stt
 #   source venv_stt/bin/activate
+#   pip install --upgrade pip
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
 #   pip install -r requirements-stt.txt
 #
-# 메인 venv(spleeter/celery/gTTS)에 직접 설치하면 click/httpx/typer 충돌이 납니다.
+# 메인 venv(spleeter/celery/gTTS)에 직접 설치하지 마세요.
 crisperwhisper[transformers]>=2.0.0
+librosa>=0.10.0
+ctranslate2>=4.0.0

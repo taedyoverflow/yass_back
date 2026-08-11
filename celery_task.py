@@ -163,7 +163,7 @@ def stt_task(
     original_ext: str = ".wav",
     language: str = "ko",
     mode: str = "intended",
-    model_size: str = "turbo",
+    model_size: str = "small",
 ):
     logger.info(
         "stt_task 시작: %s/%s model=%s language=%s mode=%s",
