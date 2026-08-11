@@ -104,20 +104,22 @@ kwargs = {
 if language and language != "auto":
     kwargs["language"] = language
 
-# ct2(+int8)가 훨씬 빠름. 실패 시 transformers로 폴백.
+# ct2(+int8) 강제 우선. 실패 시에만 transformers 폴백.
 model = None
 last_error = None
 for backend, extra in (
     ("ct2", {"compute_type": "int8"}),
+    ("ct2", {"compute_type": "int8_float32"}),
+    ("ct2", {}),
     ("transformers", {}),
 ):
     try:
         model = CrisperWhisperModel(model_size, backend=backend, **extra)
-        print(f"[stt] backend={backend}", flush=True)
+        print(f"[stt] backend={backend} extra={extra}", flush=True)
         break
     except Exception as exc:
         last_error = exc
-        print(f"[stt] backend={backend} failed: {exc}", flush=True)
+        print(f"[stt] backend={backend} extra={extra} failed: {exc}", flush=True)
 
 if model is None:
     raise RuntimeError(f"STT 모델 로드 실패: {last_error}")
