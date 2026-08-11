@@ -22,7 +22,7 @@ ALLOWED_STT_EXTENSIONS = {
     ".opus",
 }
 
-ALLOWED_MODEL_SIZES = {"turbo", "medium"}
+ALLOWED_MODEL_SIZES = {"small", "turbo", "medium"}
 ALLOWED_MODES = {"verbatim", "intended"}
 ALLOWED_LANGUAGES = {"ko", "en", "auto"}
 

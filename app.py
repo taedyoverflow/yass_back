@@ -142,7 +142,7 @@ async def submit_stt(
     if mode not in ALLOWED_MODES:
         raise HTTPException(status_code=400, detail="mode는 intended / verbatim 중 하나여야 합니다.")
     if model_size not in ALLOWED_MODEL_SIZES:
-        raise HTTPException(status_code=400, detail="model_size는 turbo / medium 중 하나여야 합니다.")
+        raise HTTPException(status_code=400, detail="model_size는 small / turbo / medium 중 하나여야 합니다.")
 
     ext = os.path.splitext(filename)[1].lower()
     temp_dir = tempfile.mkdtemp()
