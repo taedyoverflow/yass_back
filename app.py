@@ -1,33 +1,11 @@
-import os
-import tempfile
-import shutil
-
 from fastapi import FastAPI, Form, HTTPException
 from pydantic import BaseModel
 from celery.result import AsyncResult
 from celery_worker import celery_app
-from celery_task import (
-    tts_task,
-    process_audio_task,
-    midi_conversion_task,
-    process_audio_demucs_task,
-    stt_task,
-    upload_with_deletion,
-    generate_unique_filename,
-)
+from celery_task import tts_task, process_audio_task, midi_conversion_task, process_audio_demucs_task
 from fastapi.middleware.cors import CORSMiddleware
 from youtube_utils import get_video_duration, validate_youtube_exists
 from fastapi import UploadFile, File
-from mystt import (
-    ALLOWED_LANGUAGES,
-    ALLOWED_MODES,
-    ALLOWED_MODEL_SIZES,
-    MAX_STT_DURATION_SEC,
-    MAX_STT_UPLOAD_BYTES,
-    get_audio_duration_seconds,
-    is_allowed_stt_filename,
-    preprocess_audio_for_stt,
-)
 
 app = FastAPI()
 
@@ -111,102 +89,10 @@ async def get_task_result(task_id: str):
                 response["other_url"] = data["other_url"]
             if "url" in data:  # TTS용
                 response["url"] = data["url"]
-            if "text" in data:  # STT용
-                response["text"] = data["text"]
-            if "transcript_url" in data:
-                response["transcript_url"] = data["transcript_url"]
 
         return response
 
     return {"status": result.state}
-
-@app.post("/stt/")
-async def submit_stt(
-    file: UploadFile = File(...),
-    language: str = Form("ko"),
-    mode: str = Form("intended"),
-    model_size: str = Form("turbo"),
-):
-    """
-    음성 파일 업로드 → MinIO 저장 → Celery STT.
-    대용량(최대 2시간)은 Redis로 bytes를 넘기지 않음.
-    """
-    filename = file.filename or ""
-    if not is_allowed_stt_filename(filename):
-        raise HTTPException(
-            status_code=400,
-            detail="지원 형식: wav, mp3, m4a, aac, ogg, webm, flac, mp4, 3gp, amr, caf, opus",
-        )
-
-    if language not in ALLOWED_LANGUAGES:
-        raise HTTPException(status_code=400, detail="language는 ko / en / auto 중 하나여야 합니다.")
-    if mode not in ALLOWED_MODES:
-        raise HTTPException(status_code=400, detail="mode는 intended / verbatim 중 하나여야 합니다.")
-    if model_size not in ALLOWED_MODEL_SIZES:
-        raise HTTPException(status_code=400, detail="model_size는 small / turbo / medium 중 하나여야 합니다.")
-
-    ext = os.path.splitext(filename)[1].lower()
-    temp_dir = tempfile.mkdtemp()
-    input_path = os.path.join(temp_dir, f"upload{ext}")
-
-    try:
-        size = 0
-        with open(input_path, "wb") as out:
-            while True:
-                chunk = await file.read(1024 * 1024)
-                if not chunk:
-                    break
-                size += len(chunk)
-                if size > MAX_STT_UPLOAD_BYTES:
-                    raise HTTPException(
-                        status_code=400,
-                        detail="파일 크기가 너무 큽니다. 최대 1.6GB까지 업로드할 수 있습니다.",
-                    )
-                out.write(chunk)
-
-        if size == 0:
-            raise HTTPException(status_code=400, detail="빈 파일은 업로드할 수 없습니다.")
-
-        try:
-            duration = get_audio_duration_seconds(input_path)
-        except Exception:
-            raise HTTPException(
-                status_code=400,
-                detail="오디오 길이를 확인할 수 없습니다. 지원되는 음성 파일인지 확인해주세요.",
-            )
-
-        if duration > MAX_STT_DURATION_SEC:
-            raise HTTPException(
-                status_code=400,
-                detail="2시간(7200초)을 초과하는 음성 파일은 변환할 수 없습니다.",
-            )
-
-        # 업로드 직후 16kHz mono mp3로 전처리 → MinIO/Celery 부담 감소
-        processed_path = os.path.join(temp_dir, "stt_16k_mono.mp3")
-        try:
-            preprocess_audio_for_stt(input_path, processed_path)
-            upload_path = processed_path
-            upload_ext = ".mp3"
-        except Exception:
-            upload_path = input_path
-            upload_ext = ext
-
-        object_name = generate_unique_filename("stt_input", ext=upload_ext.lstrip("."))
-        # 긴 CPU 전사 동안 입력 파일이 남아 있도록 8시간 후 삭제
-        upload_with_deletion("stt-bucket", upload_path, object_name, countdown=28800)
-
-        task = stt_task.delay(
-            "stt-bucket",
-            object_name,
-            upload_ext,
-            language,
-            mode,
-            model_size,
-        )
-        return {"task_id": task.id}
-
-    finally:
-        shutil.rmtree(temp_dir, ignore_errors=True)
 
 @app.post("/convert_midi/")
 async def submit_midi(file: UploadFile = File(...)):
